@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipe Flow Rate Calculator</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-blue-50 min-h-screen">
+<div class="max-w-5xl mx-auto p-4">
+  <header class="text-center py-6">
+    <h1 class="text-3xl font-bold text-blue-900">🔧 Pipe Flow Rate Calculator</h1>
+    <p class="text-blue-700 mt-1">Darcy-Weisbach · Manning's Formula · Friction losses · Temperature effects</p>
+  </header>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Input Parameters -->
+    <div class="space-y-4">
+      <div class="bg-white rounded-2xl shadow p-5 border border-blue-200">
+        <h2 class="font-semibold text-blue-800 mb-4">Pipe Parameters</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-medium text-gray-600">Pipe Diameter (mm)</label>
+            <input id="diameter" type="number" value="100" min="1" oninput="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-600">Pipe Length (m)</label>
+            <input id="pipeLength" type="number" value="100" min="0" oninput="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-600">Pipe Material</label>
+            <select id="material" onchange="updateRoughness();calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <option value="smooth">Smooth/New Steel (0.046mm)</option>
+              <option value="galvanized">Galvanized Steel (0.15mm)</option>
+              <option value="cast_iron">Cast Iron (0.26mm)</option>
+              <option value="concrete">Concrete (1.0mm)</option>
+              <option value="pvc">PVC/HDPE (0.0015mm)</option>
+              <option value="copper">Copper (0.0015mm)</option>
+              <option value="drawn_tubing">Drawn Tubing (0.0015mm)</option>
+              <option value="commercial_steel">Commercial Steel (0.046mm)</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-600">Roughness ε (mm)</label>
+            <input id="roughness" type="number" value="0.046" step="0.001" min="0" oninput="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-2xl shadow p-5 border border-blue-200">
+        <h2 class="font-semibold text-blue-800 mb-4">Fluid & Flow</h2>
+        <div class="space-y-3">
+          <div>
+            <label class="text-xs font-medium text-gray-600">Fluid</label>
+            <select id="fluid" onchange="updateFluidProps();calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <option value="water_20">Water (20°C)</option>
+              <option value="water_0">Water (0°C)</option>
+              <option value="water_60">Water (60°C)</option>
+              <option value="water_100">Water (100°C)</option>
+              <option value="oil_light">Light Oil (20°C)</option>
+              <option value="oil_heavy">Heavy Oil (20°C)</option>
+              <option value="air">Air (20°C, 1atm)</option>
+              <option value="natural_gas">Natural Gas</option>
+              <option value="custom_fluid">Custom</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs font-medium text-gray-600">Density (kg/m³)</label>
+              <input id="density" type="number" value="998" step="0.1" oninput="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-600">Viscosity (cP)</label>
+              <input id="viscosity" type="number" value="1.002" step="0.001" oninput="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+            </div>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-gray-600">Method</label>
+            <select id="method" onchange="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+              <option value="dw">Darcy-Weisbach</option>
+              <option value="manning">Manning's Formula (open channel)</option>
+            </select>
+          </div>
+          <div id="dwInputs">
+            <label class="text-xs font-medium text-gray-600">Pressure Drop (kPa)</label>
+            <input id="pressureDrop" type="number" value="20" step="0.1" min="0" oninput="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+          <div id="manningInputs" class="hidden">
+            <label class="text-xs font-medium text-gray-600">Hydraulic Slope (m/m)</label>
+            <input id="slope" type="number" value="0.001" step="0.0001" min="0" oninput="calculate()" class="w-full mt-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="lg:col-span-2 space-y-4">
+      <div id="resultsPanel" class="bg-white rounded-2xl shadow p-6 border border-blue-200">
+        <p class="text-gray-400 text-sm italic text-center py-8">Adjust parameters to see results</p>
+      </div>
+
+      <!-- Velocity Profile -->
+      <div class="bg-white rounded-2xl shadow p-5 border border-blue-200">
+        <h2 class="font-semibold text-blue-800 mb-3">Flow Regime & Velocity Profile</h2>
+        <div id="flowProfile"></div>
+      </div>
+
+      <!-- Friction Loss Chart -->
+      <div class="bg-white rounded-2xl shadow p-5 border border-blue-200">
+        <h2 class="font-semibold text-blue-800 mb-3">Pressure Drop vs. Diameter</h2>
+        <div id="frictionChart"></div>
+      </div>
+
+      <!-- Pipe Size Reference -->
+      <div class="bg-white rounded-2xl shadow p-5 border border-blue-200">
+        <h2 class="font-semibold text-blue-800 mb-3">Standard Pipe Sizes</h2>
+        <div class="flex flex-wrap gap-2">
+          {[15,20,25,32,40,50,65,80,100,125,150,200,250,300].map(d =>
+            `<button onclick="document.getElementById('diameter').value=${d};calculate()" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-2 py-1 rounded border border-blue-200">${d}mm</button>`
+          ).join('')}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FLUID_PROPS = {
+  water_20:    { label: 'Water 20°C',       density: 998.2,  viscosity: 1.002 },
+  water_0:     { label: 'Water 0°C',        density: 999.8,  viscosity: 1.787 },
+  water_60:    { label: 'Water 60°C',       density: 983.2,  viscosity: 0.467 },
+  water_100:   { label: 'Water 100°C',      density: 958.4,  viscosity: 0.282 },
+  oil_light:   { label: 'Light Oil 20°C',   density: 870,    viscosity: 15.0  },
+  oil_heavy:   { label: 'Heavy Oil 20°C',   density: 900,    viscosity: 100.0 },
+  air:         { label: 'Air 20°C',         density: 1.204,  viscosity: 0.018 },
+  natural_gas: { label: 'Natural Gas',      density: 0.717,  viscosity: 0.011 },
+};
+
+const ROUGHNESS = {
+  smooth: 0.046, galvanized: 0.15, cast_iron: 0.26, concrete: 1.0,
+  pvc: 0.0015, copper: 0.0015, drawn_tubing: 0.0015, commercial_steel: 0.046
+};
+
+const MANNING_N = {
+  smooth: 0.010, galvanized: 0.012, cast_iron: 0.013, concrete: 0.013,
+  pvc: 0.009, copper: 0.009, drawn_tubing: 0.009, commercial_steel: 0.011
+};
+
+function updateFluidProps() {
+  const fluid = document.getElementById('fluid').value;
+  const props = FLUID_PROPS[fluid];
+  if (props) {
+    document.getElementById('density').value = props.density;
+    document.getElementById('viscosity').value = props.viscosity;
+  }
+}
+
+function updateRoughness() {
+  const mat = document.getElementById('material').value;
+  if (ROUGHNESS[mat]) {
+    document.getElementById('roughness').value = ROUGHNESS[mat];
+  }
+}
+
+function colebrookWhite(Re, D, eps) {
+  // Darcy friction factor via Colebrook-White (iterative)
+  if (Re < 2300) return 64 / Re; // Laminar
+  let f = 0.02; // initial guess
+  for (let i = 0; i < 50; i++) {
+    const f_new = 1 / (-2 * Math.log10(eps / (3.7 * D) + 2.51 / (Re * Math.sqrt(f)))) ** 2;
+    if (Math.abs(f_new - f) < 1e-8) { f = f_new; break; }
+    f = f_new;
+  }
+  return f;
+}
+
+function calculate() {
+  const method = document.getElementById('method').value;
+  document.getElementById('dwInputs').classList.toggle('hidden', method === 'manning');
+  document.getElementById('manningInputs').classList.toggle('hidden', method === 'dw');
+
+  const D_mm = parseFloat(document.getElementById('diameter').value) || 100;
+  const L = parseFloat(document.getElementById('pipeLength').value) || 100;
+  const D = D_mm / 1000; // meters
+  const eps_mm = parseFloat(document.getElementById('roughness').value) || 0.046;
+  const eps = eps_mm / 1000; // meters
+  const rho = parseFloat(document.getElementById('density').value) || 998;
+  const mu = (parseFloat(document.getElementById('viscosity').value) || 1.002) * 1e-3; // Pa·s
+
+  const A = Math.PI * D**2 / 4; // cross-sectional area m²
+  const g = 9.81;
+
+  let flowRate, velocity, Re, f, headLoss, pressDropCalc;
+
+  if (method === 'dw') {
+    const dP = (parseFloat(document.getElementById('pressureDrop').value) || 20) * 1000; // Pa
+
+    // Solve for velocity iteratively using Darcy-Weisbach: dP = f * (L/D) * (rho*v²/2)
+    let v = 1.0;
+    for (let i = 0; i < 100; i++) {
+      Re = (rho * v * D) / mu;
+      f = colebrookWhite(Re, D, eps);
+      const v_new = Math.sqrt(dP / (f * (L / D) * rho / 2));
+      if (Math.abs(v_new - v) < 1e-8) { v = v_new; break; }
+      v = v_new;
+    }
+
+    velocity = v;
+    Re = (rho * velocity * D) / mu;
+    f = colebrookWhite(Re, D, eps);
+    headLoss = dP / (rho * g);
+    pressDropCalc = f * (L / D) * (rho * velocity**2 / 2) / 1000;
+
+  } else {
+    // Manning's formula for open channel / pipe partially full
+    const S = parseFloat(document.getElementById('slope').value) || 0.001;
+    const mat = document.getElementById('material').value;
+    const n = MANNING_N[mat] || 0.013;
+    const R = D / 4; // hydraulic radius for full pipe
+    velocity = (1 / n) * Math.pow(R, 2/3) * Math.pow(S, 0.5);
+    Re = (rho * velocity * D) / mu;
+    f = colebrookWhite(Re, D, eps);
+    headLoss = S * L;
+    pressDropCalc = rho * g * headLoss / 1000;
+  }
+
+  flowRate = velocity * A; // m³/s
+  const flowLPS = flowRate * 1000; // L/s
+  const flowLPM = flowRate * 60000; // L/min
+  const flowM3H = flowRate * 3600; // m³/h
+
+  const regime = Re < 2300 ? 'Laminar' : Re < 4000 ? 'Transitional' : 'Turbulent';
+  const regimeColor = Re < 2300 ? 'text-green-600' : Re < 4000 ? 'text-yellow-600' : 'text-red-600';
+
+  document.getElementById('resultsPanel').innerHTML = `
+    <h2 class="font-bold text-blue-800 text-lg mb-4">Flow Results</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-5">
+      <div class="bg-blue-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500">Flow Rate</p>
+        <p class="text-2xl font-bold text-blue-700">${flowLPS.toFixed(2)}</p>
+        <p class="text-xs text-gray-400">L/s</p>
+      </div>
+      <div class="bg-blue-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500">Flow Rate</p>
+        <p class="text-xl font-bold text-blue-600">${flowM3H.toFixed(2)}</p>
+        <p class="text-xs text-gray-400">m³/h</p>
+      </div>
+      <div class="bg-indigo-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500">Velocity</p>
+        <p class="text-2xl font-bold text-indigo-700">${velocity.toFixed(3)}</p>
+        <p class="text-xs text-gray-400">m/s</p>
+      </div>
+      <div class="bg-orange-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500">Reynolds No.</p>
+        <p class="text-xl font-bold text-orange-700">${Math.round(Re).toLocaleString()}</p>
+        <p class="text-xs ${regimeColor} font-semibold">${regime}</p>
+      </div>
+      <div class="bg-red-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500">Head Loss</p>
+        <p class="text-xl font-bold text-red-600">${headLoss.toFixed(3)}</p>
+        <p class="text-xs text-gray-400">m</p>
+      </div>
+      <div class="bg-purple-50 rounded-xl p-3 text-center">
+        <p class="text-xs text-gray-500">Friction Factor f</p>
+        <p class="text-xl font-bold text-purple-600">${f.toFixed(5)}</p>
+        <p class="text-xs text-gray-400">Darcy</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3 text-xs text-gray-600">
+      <div class="bg-gray-50 rounded-lg p-3">
+        <p><span class="font-semibold">Pipe Area:</span> ${(A * 10000).toFixed(2)} cm²</p>
+        <p><span class="font-semibold">ε/D (relative roughness):</span> ${(eps/D).toExponential(3)}</p>
+        <p><span class="font-semibold">Flow (L/min):</span> ${flowLPM.toFixed(1)}</p>
+      </div>
+      <div class="bg-gray-50 rounded-lg p-3">
+        <p><span class="font-semibold">Kinetic head:</span> ${(velocity**2 / (2*g)).toFixed(4)} m</p>
+        <p><span class="font-semibold">Pressure drop:</span> ${pressDropCalc.toFixed(3)} kPa</p>
+        <p><span class="font-semibold">Regime:</span> <span class="${regimeColor}">${regime}</span></p>
+      </div>
+    </div>`;
+
+  renderFlowProfile(Re, velocity, D);
+  renderFrictionChart(L, eps, rho, mu);
+}
+
+function renderFlowProfile(Re, velocity, D) {
+  const container = document.getElementById('flowProfile');
+  const isLaminar = Re < 2300;
+  const isTurbulent = Re >= 4000;
+  const W = 460, H = 80;
+  const cx = W/2, cy = H/2, r = H/2 - 5;
+
+  // Velocity profile across pipe cross-section
+  const profilePts = [];
+  for (let y = -1; y <= 1; y += 0.05) {
+    let u;
+    if (isLaminar) {
+      u = 2 * velocity * (1 - y**2); // parabolic
+    } else {
+      u = velocity * Math.pow(1 - Math.abs(y), 1/7); // turbulent approx
+    }
+    const x = W/4 + (u / (velocity * 2)) * (W/2 - 20);
+    const yPx = cy + y * r;
+    profilePts.push({ x, y: yPx });
+  }
+
+  const pts = profilePts.map(p => `${p.x},${p.y}`).join(' ');
+  const color = Re < 2300 ? '#10b981' : Re < 4000 ? '#f59e0b' : '#ef4444';
+
+  container.innerHTML = `
+    <div class="flex gap-4 items-center">
+      <svg viewBox="0 0 ${W/2} ${H}" width="${W/2}" height="${H}">
+        <rect x="5" y="5" width="${W/2-10}" height="${H-10}" rx="4" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+        <line x1="${W/4}" y1="5" x2="${W/4}" y2="${H-5}" stroke="#e5e7eb" stroke-width="1" stroke-dasharray="2,2"/>
+        <polyline points="${pts}" fill="${color}22" stroke="${color}" stroke-width="2"/>
+      </svg>
+      <div class="text-xs space-y-1">
+        <p><span class="font-semibold">Profile type:</span> ${isLaminar ? 'Parabolic (laminar)' : isTurbulent ? 'Turbulent (1/7 power law)' : 'Transitional'}</p>
+        <p><span class="font-semibold">Max velocity:</span> ${(isLaminar ? 2 * velocity : velocity * 1.2).toFixed(3)} m/s (centerline)</p>
+        <p class="text-${isLaminar ? 'green' : isTurbulent ? 'red' : 'yellow'}-600 font-bold">Re = ${Math.round(Re).toLocaleString()} → ${isLaminar ? 'Laminar' : isTurbulent ? 'Turbulent' : 'Transitional'}</p>
+        <div class="flex gap-2 mt-2">
+          <div class="h-2 w-8 bg-green-400 rounded"></div><span>Laminar &lt;2300</span>
+          <div class="h-2 w-8 bg-yellow-400 rounded"></div><span>Trans.</span>
+          <div class="h-2 w-8 bg-red-400 rounded"></div><span>Turb. &gt;4000</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderFrictionChart(L, eps, rho, mu) {
+  const container = document.getElementById('frictionChart');
+  const diameters = [25,50,75,100,125,150,200,250,300];
+  const v = parseFloat(document.getElementById('diameter').value) ? null : 1.0;
+  const velInput = 1.0;
+
+  const W = 460, H = 120;
+  const vals = diameters.map(d_mm => {
+    const D = d_mm / 1000;
+    const Re = (rho * velInput * D) / mu;
+    const f = colebrookWhite(Re, D, eps / 1000);
+    const dP = f * (L / D) * (rho * velInput**2 / 2) / 1000;
+    return { d: d_mm, dP };
+  });
+
+  const maxDP = Math.max(...vals.map(v => v.dP));
+  const pts = vals.map((v, i) => {
+    const x = 20 + (i / (vals.length - 1)) * (W - 40);
+    const y = H - 20 - (v.dP / maxDP) * (H - 30);
+    return `${x},${y}`;
+  }).join(' ');
+
+  container.innerHTML = `<svg viewBox="0 0 ${W} ${H}" class="w-full" height="${H}">
+    <line x1="18" y1="${H-18}" x2="${W}" y2="${H-18}" stroke="#e5e7eb" stroke-width="1"/>
+    <line x1="18" y1="0" x2="18" y2="${H-18}" stroke="#e5e7eb" stroke-width="1"/>
+    <polyline points="${pts}" fill="none" stroke="#3b82f6" stroke-width="2.5"/>
+    ${vals.map((v, i) => {
+      const x = 20 + (i / (vals.length - 1)) * (W - 40);
+      const y = H - 20 - (v.dP / maxDP) * (H - 30);
+      return `<circle cx="${x}" cy="${y}" r="3" fill="#3b82f6"/>
+        <text x="${x}" y="${H-4}" text-anchor="middle" font-size="7" fill="#6b7280">${v.d}</text>`;
+    }).join('')}
+    <text x="4" y="14" font-size="8" fill="#6b7280" transform="rotate(-90,4,${H/2})">ΔP (kPa)</text>
+    <text x="${W/2}" y="${H}" text-anchor="middle" font-size="8" fill="#6b7280">Diameter (mm) @ v=1m/s</text>
+  </svg>`;
+}
+
+// Initialize
+updateFluidProps();
+calculate();
+</script>
+</body>
+</html>
